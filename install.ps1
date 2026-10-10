@@ -1,27 +1,27 @@
 param(
     [string]$Version,
-    [string]$InstallDir = (Join-Path $env:LOCALAPPDATA 'Programs\mrecord')
+    [string]$InstallDir = (Join-Path $env:LOCALAPPDATA 'Programs\hrecord')
 )
 
-function Get-MrecordRelease {
+function Get-HrecordRelease {
     param([string]$Version)
     $tag = if ($Version) { "v$($Version.TrimStart('v'))" } else { $null }
     $endpoint = if ($tag) { "tags/$tag" } else { 'latest' }
     try {
-        $found = Invoke-RestMethod "https://api.github.com/repos/blendonl/mrecord/releases/$endpoint"
+        $found = Invoke-RestMethod "https://api.github.com/repos/blendonl/hrecord/releases/$endpoint"
     } catch {
-        throw "Could not find mrecord release $(if ($tag) { $tag } else { 'latest' }): $($_.Exception.Message)"
+        throw "Could not find hrecord release $(if ($tag) { $tag } else { 'latest' }): $($_.Exception.Message)"
     }
-    $asset = $found.assets | Where-Object name -like 'mrecord-*-win64.zip' | Select-Object -First 1
+    $asset = $found.assets | Where-Object name -like 'hrecord-*-win64.zip' | Select-Object -First 1
     if (-not $asset) {
-        throw "Release $($found.tag_name) has no mrecord-*-win64.zip to install."
+        throw "Release $($found.tag_name) has no hrecord-*-win64.zip to install."
     }
     [pscustomobject]@{ Tag = $found.tag_name; Name = $asset.name; Url = $asset.browser_download_url }
 }
 
-function Stop-InstalledMrecord {
+function Stop-InstalledHrecord {
     param([string]$Exe)
-    $running = @(Get-Process mrecord -ErrorAction SilentlyContinue | Where-Object Path -eq $Exe)
+    $running = @(Get-Process hrecord -ErrorAction SilentlyContinue | Where-Object Path -eq $Exe)
     if (-not $running) {
         return
     }
@@ -31,7 +31,7 @@ function Stop-InstalledMrecord {
 }
 
 function Send-EnvironmentChange {
-    $name = "MRECORD_INSTALL_$PID"
+    $name = "HRECORD_INSTALL_$PID"
     [Environment]::SetEnvironmentVariable($name, '1', 'User')
     [Environment]::SetEnvironmentVariable($name, [NullString]::Value, 'User')
 }
@@ -57,19 +57,19 @@ function Add-UserPath {
     return $true
 }
 
-function Install-Mrecord {
+function Install-Hrecord {
     param([string]$Version, [string]$InstallDir)
     $ErrorActionPreference = 'Stop'
     $ProgressPreference = 'SilentlyContinue'
     [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
 
     if (-not [Environment]::Is64BitOperatingSystem) {
-        throw 'mrecord is only built for 64-bit Windows.'
+        throw 'hrecord is only built for 64-bit Windows.'
     }
 
-    $release = Get-MrecordRelease $Version
-    $exe = Join-Path $InstallDir 'mrecord.exe'
-    $staging = Join-Path ([IO.Path]::GetTempPath()) "mrecord-install-$([guid]::NewGuid())"
+    $release = Get-HrecordRelease $Version
+    $exe = Join-Path $InstallDir 'hrecord.exe'
+    $staging = Join-Path ([IO.Path]::GetTempPath()) "hrecord-install-$([guid]::NewGuid())"
     New-Item -ItemType Directory $staging | Out-Null
     try {
         Write-Host "Downloading $($release.Name)"
@@ -78,7 +78,7 @@ function Install-Mrecord {
         Expand-Archive $zip (Join-Path $staging 'unpacked')
         $payload = Get-ChildItem (Join-Path $staging 'unpacked') -Directory | Select-Object -First 1
 
-        Stop-InstalledMrecord $exe
+        Stop-InstalledHrecord $exe
         New-Item -ItemType Directory -Force $InstallDir | Out-Null
         Copy-Item (Join-Path $payload.FullName '*') $InstallDir -Recurse -Force
     } finally {
@@ -87,11 +87,11 @@ function Install-Mrecord {
 
     $addedToPath = Add-UserPath $InstallDir
 
-    Write-Host "Installed mrecord $($release.Tag) to $InstallDir"
+    Write-Host "Installed hrecord $($release.Tag) to $InstallDir"
     if ($addedToPath) {
         Write-Host "Added it to your PATH. Terminals that were already open need restarting to see it."
     }
-    Write-Host "Run 'mrecord --help' to get started."
+    Write-Host "Run 'hrecord --help' to get started."
 }
 
-Install-Mrecord -Version $Version -InstallDir $InstallDir
+Install-Hrecord -Version $Version -InstallDir $InstallDir

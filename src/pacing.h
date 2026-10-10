@@ -1,5 +1,5 @@
-#ifndef MRECORD_PACING_H
-#define MRECORD_PACING_H
+#ifndef HRECORD_PACING_H
+#define HRECORD_PACING_H
 
 #include <stdint.h>
 

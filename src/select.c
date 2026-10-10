@@ -1,8 +1,8 @@
-#include "mrecord.h"
+#include "hrecord.h"
 
 #include <windowsx.h>
 
-#define SELECT_CLASS   L"mrecord_Select"
+#define SELECT_CLASS   L"hrecord_Select"
 #define DIM_ALPHA      110
 #define HOLE_COLOR     RGB(255, 0, 255)
 #define EDGE_COLOR     RGB(255, 255, 255)
@@ -262,7 +262,7 @@ SelectResult select_region(GRect *out) {
 
     s_sel = &s;
     s.hwnd = CreateWindowExW(WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_LAYERED,
-                             SELECT_CLASS, L"mrecord", WS_POPUP,
+                             SELECT_CLASS, L"hrecord", WS_POPUP,
                              s.virt.left, s.virt.top,
                              grect_width(s.virt), grect_height(s.virt),
                              NULL, NULL, inst, NULL);

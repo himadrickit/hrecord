@@ -1,5 +1,5 @@
-#ifndef MRECORD_ARGS_H
-#define MRECORD_ARGS_H
+#ifndef HRECORD_ARGS_H
+#define HRECORD_ARGS_H
 
 #include <stdbool.h>
 #include <wchar.h>

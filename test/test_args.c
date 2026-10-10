@@ -3,13 +3,13 @@
 
 #define PARSE(o, ...)                                                          \
     ({                                                                         \
-        wchar_t *argv_[] = { L"mrecord", __VA_ARGS__ };                        \
+        wchar_t *argv_[] = { L"hrecord", __VA_ARGS__ };                        \
         args_parse((int)(sizeof argv_ / sizeof argv_[0]), argv_, (o));        \
     })
 
 static void test_defaults(void) {
     Options o;
-    wchar_t *argv[] = { L"mrecord" };
+    wchar_t *argv[] = { L"hrecord" };
     CHECK(args_parse(1, argv, &o), "no arguments parses");
     CHECK(o.command == CMD_RECORD, "records by default");
     CHECK(o.region == REGION_SELECT, "selects by default");

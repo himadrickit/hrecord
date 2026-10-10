@@ -6,11 +6,11 @@ static void test_default_name(void) {
 
     CHECK(naming_default_name(out, 256, L"C:\\Users\\me\\Videos\\Screen Recordings",
                               2026, 9, 14, 7, 5, 3, 1), "builds a name");
-    CHECK(wcscmp(out, L"C:\\Users\\me\\Videos\\Screen Recordings\\mrecord-20260914-070503.mp4") == 0,
+    CHECK(wcscmp(out, L"C:\\Users\\me\\Videos\\Screen Recordings\\hrecord-20260914-070503.mp4") == 0,
           "name shape");
 
     CHECK(naming_default_name(out, 256, L"C:\\v\\", 2026, 1, 2, 3, 4, 5, 3), "trailing slash dir");
-    CHECK(wcscmp(out, L"C:\\v\\mrecord-20260102-030405-3.mp4") == 0, "attempt suffix, one separator");
+    CHECK(wcscmp(out, L"C:\\v\\hrecord-20260102-030405-3.mp4") == 0, "attempt suffix, one separator");
 
     CHECK(!naming_default_name(out, 10, L"C:\\v", 2026, 1, 2, 3, 4, 5, 1), "too small buffer fails");
 }

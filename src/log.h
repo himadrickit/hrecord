@@ -1,5 +1,5 @@
-#ifndef MRECORD_LOG_H
-#define MRECORD_LOG_H
+#ifndef HRECORD_LOG_H
+#define HRECORD_LOG_H
 
 #include <windows.h>
 #include <stdarg.h>

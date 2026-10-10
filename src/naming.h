@@ -1,5 +1,5 @@
-#ifndef MRECORD_NAMING_H
-#define MRECORD_NAMING_H
+#ifndef HRECORD_NAMING_H
+#define HRECORD_NAMING_H
 
 #include <stdbool.h>
 #include <stddef.h>

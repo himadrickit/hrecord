@@ -42,11 +42,11 @@ static bool log_path(const wchar_t *basename, wchar_t *out, size_t cap) {
         if (dir[n - 1] == L'\\') dir[n - 1] = L'\0';
     }
 
-    if (_snwprintf(out, cap, L"%ls\\mrecord", dir) < 0) return false;
+    if (_snwprintf(out, cap, L"%ls\\hrecord", dir) < 0) return false;
     out[cap - 1] = L'\0';
     CreateDirectoryW(out, NULL);
 
-    if (_snwprintf(out, cap, L"%ls\\mrecord\\%ls.log", dir, basename) < 0) return false;
+    if (_snwprintf(out, cap, L"%ls\\hrecord\\%ls.log", dir, basename) < 0) return false;
     out[cap - 1] = L'\0';
     return true;
 }

@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to mrecord are documented here. This project adheres to
+All notable changes to hrecord are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/) (pre-1.0: minor = features + fixes).
 Sections after 0.1.0 are generated from commit messages; see *Releases* in the
 README.

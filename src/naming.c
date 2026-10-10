@@ -14,9 +14,9 @@ bool naming_default_name(wchar_t *out, size_t cap, const wchar_t *dir,
 
     wchar_t stamp[64];
     int n = attempt > 1
-        ? swprintf(stamp, 64, L"mrecord-%04d%02d%02d-%02d%02d%02d-%d.mp4",
+        ? swprintf(stamp, 64, L"hrecord-%04d%02d%02d-%02d%02d%02d-%d.mp4",
                    year, month, day, hour, minute, second, attempt)
-        : swprintf(stamp, 64, L"mrecord-%04d%02d%02d-%02d%02d%02d.mp4",
+        : swprintf(stamp, 64, L"hrecord-%04d%02d%02d-%02d%02d%02d.mp4",
                    year, month, day, hour, minute, second);
     if (n <= 0) return false;
 

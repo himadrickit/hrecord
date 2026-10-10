@@ -1,4 +1,4 @@
-# mrecord
+# hrecord
 
 A **screen recorder for the Windows command line**. Point it at a region, a
 window or a monitor and it writes an H.264 MP4, with system sound if you ask.
@@ -6,10 +6,10 @@ One binary, no installer required, nothing running in the background between
 recordings.
 
 ```
-mrecord                      drag a rectangle, record until `mrecord --stop`
-mrecord --monitor 1 -D 30    record monitor 1 for thirty seconds
-mrecord --window --audio     record the focused window with system sound
-mrecord --toggle             start, or stop the one that is running
+hrecord                      drag a rectangle, record until `hrecord --stop`
+hrecord --monitor 1 -D 30    record monitor 1 for thirty seconds
+hrecord --window --audio     record the focused window with system sound
+hrecord --toggle             start, or stop the one that is running
 ```
 
 It runs under plain Explorer or any window manager and needs neither. It is a
@@ -21,7 +21,7 @@ screenshots.
 ## Usage
 
 ```
-mrecord [region] [options]
+hrecord [region] [options]
 
 Region (pick one; default --select). The region must lie on a single monitor:
   -s, --select          live dimmed overlay: drag a rectangle (WxH label), single click takes the window
@@ -35,7 +35,7 @@ Control:
       --stop            stop the running recording and exit
   -D, --duration SECS   stop by itself
 Options:
-  -o, --output PATH     .mp4; default %USERPROFILE%\Videos\Screen Recordings\mrecord-YYYYMMDD-HHMMSS.mp4
+  -o, --output PATH     .mp4; default %USERPROFILE%\Videos\Screen Recordings\hrecord-YYYYMMDD-HHMMSS.mp4
       --fps N           default 30 (constant frame rate; repeat the last frame when nothing changed)
       --bitrate KBPS    default derived from region size and fps
   -a, --audio           also record system sound (WASAPI loopback, AAC)
@@ -62,11 +62,11 @@ bottom, with the rectangle in the same `X,Y,W,H` shape `--rect` takes:
 A recording runs until one of these happens, and every one of them finalizes
 the file so it plays:
 
-- `mrecord --stop` (or `mrecord --toggle`) from anywhere in the same session.
+- `hrecord --stop` (or `hrecord --toggle`) from anywhere in the same session.
   It waits for the file to be written and prints its path.
 - `--duration` runs out.
 - `Ctrl+C` in the console it was started from.
-- `taskkill /IM mrecord.exe` without `/F`, or signing out.
+- `taskkill /IM hrecord.exe` without `/F`, or signing out.
 
 Only one recording runs per session; starting a second one fails with exit
 code 1 and says so.
@@ -78,15 +78,15 @@ Bind it like any other program, one key for both start and stop. Pressing
 
 ```lua
 mshell.keys.submap("capture", {
-    r = { function() mshell.exec("mrecord.exe", "--toggle --select") end,  desc = "record region" },
-    v = { function() mshell.exec("mrecord.exe", "--toggle --monitor") end, desc = "record monitor" },
+    r = { function() mshell.exec("hrecord.exe", "--toggle --select") end,  desc = "record region" },
+    v = { function() mshell.exec("hrecord.exe", "--toggle --monitor") end, desc = "record monitor" },
 })
 ```
 
-`mrecord` is a GUI-subsystem program, so launching it from a hotkey does not
+`hrecord` is a GUI-subsystem program, so launching it from a hotkey does not
 flash a console window. The flip side is that `cmd.exe` does not wait for it:
-use `start /wait mrecord ...` there, or pipe it in PowerShell
-(`mrecord --list | Out-Host`) when you want the prompt to come back after it.
+use `start /wait hrecord ...` there, or pipe it in PowerShell
+(`hrecord --list | Out-Host`) when you want the prompt to come back after it.
 
 ## How it works
 
@@ -118,7 +118,7 @@ use `start /wait mrecord ...` there, or pipe it in PowerShell
   black, as in every other recorder.
 - Only system sound is recorded, not a microphone.
 
-Logs go to `%LOCALAPPDATA%\mrecord\mrecord.log`.
+Logs go to `%LOCALAPPDATA%\hrecord\hrecord.log`.
 
 ## Build
 
@@ -126,9 +126,9 @@ Cross-compiled from Linux with **mingw-w64**:
 
 ```sh
 sudo apt install gcc-mingw-w64-x86-64
-make            # -> mrecord.exe
+make            # -> hrecord.exe
 make test       # host-side unit tests
-make dist       # -> dist/mrecord-<version>-win64.zip
+make dist       # -> dist/hrecord-<version>-win64.zip
 ```
 
 `make test` covers everything with no Windows in it: argument parsing, region
@@ -153,16 +153,16 @@ Anything else bumps the patch.
 In PowerShell:
 
 ```powershell
-irm https://raw.githubusercontent.com/blendonl/mrecord/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/blendonl/hrecord/main/install.ps1 | iex
 ```
 
-That downloads the latest release into `%LOCALAPPDATA%\Programs\mrecord` and
+That downloads the latest release into `%LOCALAPPDATA%\Programs\hrecord` and
 adds the folder to your user `PATH`. Run it again to upgrade; a recording
 running from that folder is stopped first. To pin a version, or install
 somewhere else:
 
 ```powershell
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/blendonl/mrecord/main/install.ps1))) -Version 0.1.0 -InstallDir C:\Tools\mrecord
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/blendonl/hrecord/main/install.ps1))) -Version 0.1.0 -InstallDir C:\Tools\hrecord
 ```
 
 ## License

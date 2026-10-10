@@ -1,5 +1,5 @@
-#ifndef MRECORD_H
-#define MRECORD_H
+#ifndef HRECORD_H
+#define HRECORD_H
 
 #define COBJMACROS
 
@@ -26,7 +26,7 @@
 /* Quality-based VBR level (1-100) used unless --bitrate is given. */
 #define ENCODER_QUALITY 70
 
-#define MRECORD_VERSION_W L"" MRECORD_VERSION
+#define HRECORD_VERSION_W L"" HRECORD_VERSION
 
 void con_out(const wchar_t *fmt, ...);
 void con_err(const wchar_t *fmt, ...);

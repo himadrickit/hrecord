@@ -1,4 +1,4 @@
-#include "mrecord.h"
+#include "hrecord.h"
 
 #define BORDER_THICKNESS 3
 #define BORDER_TIMER     1
@@ -30,7 +30,7 @@ static DWORD WINAPI border_thread(LPVOID param) {
     wc.lpfnWndProc   = border_proc;
     wc.hInstance     = GetModuleHandleW(NULL);
     wc.hbrBackground = CreateSolidBrush(BORDER_COLOR);
-    wc.lpszClassName = L"mrecord_Border";
+    wc.lpszClassName = L"hrecord_Border";
     RegisterClassW(&wc);
 
     GRect bars[4];
@@ -43,7 +43,7 @@ static DWORD WINAPI border_thread(LPVOID param) {
         windows[i] = CreateWindowExW(
             WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE |
                 WS_EX_TRANSPARENT | WS_EX_LAYERED,
-            wc.lpszClassName, L"mrecord", WS_POPUP,
+            wc.lpszClassName, L"hrecord", WS_POPUP,
             bars[i].left, bars[i].top, grect_width(bars[i]), grect_height(bars[i]),
             NULL, NULL, wc.hInstance, NULL);
         if (!windows[i]) continue;

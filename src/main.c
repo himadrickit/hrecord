@@ -1,4 +1,4 @@
-#include "mrecord.h"
+#include "hrecord.h"
 
 #include <mfapi.h>
 #include <shlobj.h>
@@ -8,9 +8,9 @@
 #define REOPEN_GIVE_UP_MS      15000
 
 static const wchar_t USAGE[] =
-L"mrecord " MRECORD_VERSION_W L" - record a region, window or monitor to MP4\n"
+L"hrecord " HRECORD_VERSION_W L" - record a region, window or monitor to MP4\n"
 L"\n"
-L"mrecord [region] [options]\n"
+L"hrecord [region] [options]\n"
 L"\n"
 L"Region (pick one; default --select). The region must lie on a single monitor:\n"
 L"  -s, --select          live dimmed overlay: drag a rectangle (WxH label), single click takes the window\n"
@@ -24,7 +24,7 @@ L"  -t, --toggle          if a recording is running, stop it; otherwise start on
 L"      --stop            stop the running recording and exit\n"
 L"  -D, --duration SECS   stop by itself\n"
 L"Options:\n"
-L"  -o, --output PATH     .mp4; default %USERPROFILE%\\Videos\\Screen Recordings\\mrecord-YYYYMMDD-HHMMSS.mp4\n"
+L"  -o, --output PATH     .mp4; default %USERPROFILE%\\Videos\\Screen Recordings\\hrecord-YYYYMMDD-HHMMSS.mp4\n"
 L"      --fps N           default 30 (constant frame rate; repeat the last frame when nothing changed)\n"
 L"      --bitrate KBPS    target average bitrate; default: size follows what changes on screen\n"
 L"  -a, --audio           also record system sound (WASAPI loopback, AAC)\n"
@@ -79,7 +79,7 @@ static int resolve_target(const Options *o, Target *t) {
     Monitor mons[MONITORS_MAX];
     int count = monitors_list(mons, MONITORS_MAX);
     if (count <= 0) {
-        con_err(L"mrecord: no monitors found\n");
+        con_err(L"hrecord: no monitors found\n");
         return MR_EXIT_FAIL;
     }
 
@@ -90,8 +90,8 @@ static int resolve_target(const Options *o, Target *t) {
     case REGION_RECT: {
         GRect r = grect_make(o->rect_x, o->rect_y, o->rect_w, o->rect_h);
         if (target_on_monitor(t, mons, count, r) < 0) {
-            con_err(L"mrecord: --rect %d,%d,%d,%d does not lie on a single monitor "
-                    L"(see mrecord --list)\n", o->rect_x, o->rect_y, o->rect_w, o->rect_h);
+            con_err(L"hrecord: --rect %d,%d,%d,%d does not lie on a single monitor "
+                    L"(see hrecord --list)\n", o->rect_x, o->rect_y, o->rect_w, o->rect_h);
             return MR_EXIT_USAGE;
         }
         break;
@@ -105,7 +105,7 @@ static int resolve_target(const Options *o, Target *t) {
             if (i < 0) i = 0;
         }
         if (i >= count) {
-            con_err(L"mrecord: there is no monitor %d (see mrecord --list)\n", i);
+            con_err(L"hrecord: there is no monitor %d (see hrecord --list)\n", i);
             return MR_EXIT_USAGE;
         }
         t->region  = mons[i].rect;
@@ -116,13 +116,13 @@ static int resolve_target(const Options *o, Target *t) {
         HWND fg = GetForegroundWindow();
         GRect frame;
         if (!fg || !window_visible_frame(fg, &frame)) {
-            con_err(L"mrecord: no foreground window to record\n");
+            con_err(L"hrecord: no foreground window to record\n");
             return MR_EXIT_FAIL;
         }
         int i = monitors_find(mons, count, MonitorFromWindow(fg, MONITOR_DEFAULTTONEAREST));
         if (i < 0) i = geom_monitor_most_overlap(rects, count, frame);
         if (i < 0) {
-            con_err(L"mrecord: the foreground window is not on any monitor\n");
+            con_err(L"hrecord: the foreground window is not on any monitor\n");
             return MR_EXIT_FAIL;
         }
         t->region  = grect_intersect(frame, mons[i].rect);
@@ -133,11 +133,11 @@ static int resolve_target(const Options *o, Target *t) {
         GRect r;
         SelectResult sr = select_region(&r);
         if (sr == SELECT_CANCELLED) {
-            con_err(L"mrecord: selection cancelled\n");
+            con_err(L"hrecord: selection cancelled\n");
             return MR_EXIT_CANCELLED;
         }
         if (sr == SELECT_FAILED) {
-            con_err(L"mrecord: could not show the selection overlay\n");
+            con_err(L"hrecord: could not show the selection overlay\n");
             return MR_EXIT_FAIL;
         }
         int i = geom_monitor_most_overlap(rects, count, r);
@@ -150,7 +150,7 @@ static int resolve_target(const Options *o, Target *t) {
 
     t->region = grect_even(t->region);
     if (grect_width(t->region) < 2 || grect_height(t->region) < 2) {
-        con_err(L"mrecord: the region is too small to record\n");
+        con_err(L"hrecord: the region is too small to record\n");
         return MR_EXIT_USAGE;
     }
     return MR_EXIT_OK;
@@ -237,7 +237,7 @@ static int run_session(const Options *o, const Target *t, const wchar_t *path, C
     int quality = o->bitrate_kbps ? 0 : ENCODER_QUALITY;
 
     if (!capture_open(&s.capture, t->monitor.device, t->region)) {
-        con_err(L"mrecord: cannot capture %ls (see %%LOCALAPPDATA%%\\mrecord\\mrecord.log)\n",
+        con_err(L"hrecord: cannot capture %ls (see %%LOCALAPPDATA%%\\hrecord\\hrecord.log)\n",
                 t->monitor.device);
         return MR_EXIT_FAIL;
     }
@@ -245,19 +245,19 @@ static int run_session(const Options *o, const Target *t, const wchar_t *path, C
     if (o->audio) {
         s.audio_open = audio_open(&s.audio);
         if (!s.audio_open)
-            con_err(L"mrecord: system sound is unavailable, recording video only\n");
+            con_err(L"hrecord: system sound is unavailable, recording video only\n");
     }
 
     bool encoder_ok = encoder_open(&s.encoder, path, width, height, o->fps, kbps, quality,
                                    s.audio_open ? s.audio.rate_out : 0);
     if (!encoder_ok && s.audio_open) {
-        con_err(L"mrecord: the AAC encoder refused system sound, recording video only\n");
+        con_err(L"hrecord: the AAC encoder refused system sound, recording video only\n");
         audio_close(&s.audio);
         s.audio_open = false;
         encoder_ok = encoder_open(&s.encoder, path, width, height, o->fps, kbps, quality, 0);
     }
     if (!encoder_ok) {
-        con_err(L"mrecord: cannot create %ls\n", path);
+        con_err(L"hrecord: cannot create %ls\n", path);
         capture_close(&s.capture);
         return MR_EXIT_FAIL;
     }
@@ -275,7 +275,7 @@ static int run_session(const Options *o, const Target *t, const wchar_t *path, C
     bool have = first_frame(&s);
     if (!have) {
         if (!stop_requested()) {
-            con_err(L"mrecord: no frame arrived from %ls\n", t->monitor.device);
+            con_err(L"hrecord: no frame arrived from %ls\n", t->monitor.device);
             exit_code = MR_EXIT_FAIL;
         }
     }
@@ -324,7 +324,7 @@ static int run_session(const Options *o, const Target *t, const wchar_t *path, C
             next = due + 1;
 
             if (s.audio_running && InterlockedCompareExchange(&s.audio.failed, 0, 0)) {
-                con_err(L"mrecord: system sound stopped, the rest is video only\n");
+                con_err(L"hrecord: system sound stopped, the rest is video only\n");
                 s.audio_running = false;
             }
         }
@@ -349,7 +349,7 @@ static int run_session(const Options *o, const Target *t, const wchar_t *path, C
         return exit_code == MR_EXIT_OK ? MR_EXIT_CANCELLED : exit_code;
     }
     if (!finalized) {
-        con_err(L"mrecord: %ls could not be finalized and may not play\n", path);
+        con_err(L"hrecord: %ls could not be finalized and may not play\n", path);
         return MR_EXIT_FAIL;
     }
     con_out(L"%ls\n", path);
@@ -359,7 +359,7 @@ static int run_session(const Options *o, const Target *t, const wchar_t *path, C
 static int record(const Options *o) {
     Control control;
     if (!control_acquire(&control)) {
-        con_err(L"mrecord: a recording is already running (mrecord --stop ends it)\n");
+        con_err(L"hrecord: a recording is already running (hrecord --stop ends it)\n");
         return MR_EXIT_FAIL;
     }
     s_stop_event = control.stop;
@@ -379,14 +379,14 @@ static int record(const Options *o) {
 
     wchar_t path[ARGS_PATH_MAX];
     if (code == MR_EXIT_OK && !output_path(o, path, ARGS_PATH_MAX)) {
-        con_err(L"mrecord: cannot work out where to save the recording\n");
+        con_err(L"hrecord: cannot work out where to save the recording\n");
         code = MR_EXIT_FAIL;
     }
 
     if (code == MR_EXIT_OK) {
         HRESULT hr = MFStartup(MF_VERSION, MFSTARTUP_FULL);
         if (FAILED(hr)) {
-            con_err(L"mrecord: Media Foundation is unavailable (0x%08lX)\n", (unsigned long)hr);
+            con_err(L"hrecord: Media Foundation is unavailable (0x%08lX)\n", (unsigned long)hr);
             code = MR_EXIT_FAIL;
         } else {
             code = run_session(o, &target, path, &control);
@@ -408,7 +408,7 @@ int WINAPI WinMain(HINSTANCE inst, HINSTANCE prev, LPSTR cmdline, int show) {
 
     Options o;
     if (!args_parse(argc, argv, &o)) {
-        con_err(L"mrecord: %ls\nTry 'mrecord --help'.\n", o.error);
+        con_err(L"hrecord: %ls\nTry 'hrecord --help'.\n", o.error);
         LocalFree(argv);
         return MR_EXIT_USAGE;
     }
@@ -419,7 +419,7 @@ int WINAPI WinMain(HINSTANCE inst, HINSTANCE prev, LPSTR cmdline, int show) {
         con_out(L"%ls", USAGE);
         return MR_EXIT_OK;
     case CMD_VERSION:
-        con_out(L"mrecord %ls\n", MRECORD_VERSION_W);
+        con_out(L"hrecord %ls\n", HRECORD_VERSION_W);
         return MR_EXIT_OK;
     case CMD_LIST:
         monitors_print();
@@ -433,7 +433,7 @@ int WINAPI WinMain(HINSTANCE inst, HINSTANCE prev, LPSTR cmdline, int show) {
         break;
     }
 
-    log_init(L"mrecord", LOG_INFO);
+    log_init(L"hrecord", LOG_INFO);
     timeBeginPeriod(1);
     CoInitializeEx(NULL, COINIT_MULTITHREADED);
 

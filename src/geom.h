@@ -1,5 +1,5 @@
-#ifndef MRECORD_GEOM_H
-#define MRECORD_GEOM_H
+#ifndef HRECORD_GEOM_H
+#define HRECORD_GEOM_H
 
 #include <stdbool.h>
 

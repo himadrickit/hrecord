@@ -1,4 +1,4 @@
-#include "mrecord.h"
+#include "hrecord.h"
 
 #define PATH_BYTES (sizeof(wchar_t) * ARGS_PATH_MAX)
 
@@ -7,7 +7,7 @@ static Control *s_control;
 static void object_name(wchar_t *out, size_t cap, const wchar_t *what) {
     DWORD session = 0;
     ProcessIdToSessionId(GetCurrentProcessId(), &session);
-    _snwprintf(out, cap, L"Local\\mrecord-%ls-%lu", what, (unsigned long)session);
+    _snwprintf(out, cap, L"Local\\hrecord-%ls-%lu", what, (unsigned long)session);
     out[cap - 1] = L'\0';
 }
 
@@ -35,11 +35,11 @@ static DWORD WINAPI control_thread(LPVOID param) {
     WNDCLASSW wc = {0};
     wc.lpfnWndProc   = control_proc;
     wc.hInstance     = GetModuleHandleW(NULL);
-    wc.lpszClassName = L"mrecord_Control";
+    wc.lpszClassName = L"hrecord_Control";
     RegisterClassW(&wc);
 
     HWND hwnd = CreateWindowExW(WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE | WS_EX_TRANSPARENT,
-                                wc.lpszClassName, L"mrecord",
+                                wc.lpszClassName, L"hrecord",
                                 WS_POPUP, 0, 0, 0, 0, NULL, NULL, wc.hInstance, NULL);
     if (hwnd) ShowWindow(hwnd, SW_SHOWNOACTIVATE);
     SetEvent(ready);
@@ -147,7 +147,7 @@ int control_stop_running(void) {
     object_name(name, 96, L"running");
     HANDLE m = OpenMutexW(SYNCHRONIZE | MUTEX_MODIFY_STATE, FALSE, name);
     if (!m) {
-        con_err(L"mrecord: no recording is running\n");
+        con_err(L"hrecord: no recording is running\n");
         return MR_EXIT_CANCELLED;
     }
 
@@ -155,7 +155,7 @@ int control_stop_running(void) {
     HANDLE ev = OpenEventW(EVENT_MODIFY_STATE, FALSE, name);
     if (!ev) {
         CloseHandle(m);
-        con_err(L"mrecord: could not reach the running recording (%lu)\n", GetLastError());
+        con_err(L"hrecord: could not reach the running recording (%lu)\n", GetLastError());
         return MR_EXIT_FAIL;
     }
 
@@ -169,7 +169,7 @@ int control_stop_running(void) {
     CloseHandle(m);
 
     if (w == WAIT_TIMEOUT) {
-        con_err(L"mrecord: the recording did not finish within 60 seconds\n");
+        con_err(L"hrecord: the recording did not finish within 60 seconds\n");
         return MR_EXIT_FAIL;
     }
     if (path[0]) con_out(L"%ls\n", path);

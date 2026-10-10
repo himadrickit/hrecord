@@ -1,4 +1,4 @@
-#include "mrecord.h"
+#include "hrecord.h"
 
 bool cursor_canvas_open(CursorCanvas *c, int width, int height) {
     ZeroMemory(c, sizeof *c);

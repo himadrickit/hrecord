@@ -1,5 +1,5 @@
-#ifndef MRECORD_CONVERT_H
-#define MRECORD_CONVERT_H
+#ifndef HRECORD_CONVERT_H
+#define HRECORD_CONVERT_H
 
 #include <stdbool.h>
 #include <stddef.h>

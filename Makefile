@@ -9,7 +9,7 @@ VER_PATCH := $(word 3,$(subst ., ,$(VERSION)))
 
 CFLAGS   = -O2 -s -flto -mwindows \
            -DUNICODE -D_UNICODE \
-           -DMRECORD_VERSION='"$(VERSION)"' \
+           -DHRECORD_VERSION='"$(VERSION)"' \
            -Wall -Wextra -Wno-unused-parameter \
            $(CFLAGS_EXTRA)
 
@@ -42,16 +42,16 @@ WIN_SRCS  = $(SRC_DIR)/main.c     \
             $(SRC_DIR)/audio.c    \
             $(SRC_DIR)/log.c
 
-MRECORD_SRCS = $(PURE_SRCS) $(WIN_SRCS)
-MRECORD_OBJS = $(MRECORD_SRCS:.c=.o)
-RES_OBJ      = $(SRC_DIR)/mrecord.res.o
+HRECORD_SRCS = $(PURE_SRCS) $(WIN_SRCS)
+HRECORD_OBJS = $(HRECORD_SRCS:.c=.o)
+RES_OBJ      = $(SRC_DIR)/hrecord.res.o
 
 PURE_HDRS = $(SRC_DIR)/args.h $(SRC_DIR)/geom.h $(SRC_DIR)/naming.h \
             $(SRC_DIR)/pacing.h $(SRC_DIR)/convert.h
 
-TARGET    = mrecord.exe
+TARGET    = hrecord.exe
 
-DISTNAME   = mrecord-$(VERSION)-win64
+DISTNAME   = hrecord-$(VERSION)-win64
 DISTDIR    = dist/$(DISTNAME)
 DIST_FILES = README.md CHANGELOG.md MANUAL-TESTS.md LICENSE
 
@@ -80,9 +80,9 @@ $(VERSION_STAMP):
 	@rm -f .version-*
 	@touch $@
 
-$(MRECORD_OBJS) $(RES_OBJ): $(VERSION_STAMP)
+$(HRECORD_OBJS) $(RES_OBJ): $(VERSION_STAMP)
 
-$(TARGET): $(MRECORD_OBJS) $(RES_OBJ)
+$(TARGET): $(HRECORD_OBJS) $(RES_OBJ)
 	@echo "  LINK  $@"
 	$(CC) $(CFLAGS) -o $@ $^ $(LDLIBS)
 
@@ -90,11 +90,11 @@ $(SRC_DIR)/log.o: $(SRC_DIR)/log.c $(SRC_DIR)/log.h
 	@echo "  CC    $<"
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-$(SRC_DIR)/%.o: $(SRC_DIR)/%.c $(SRC_DIR)/mrecord.h $(PURE_HDRS)
+$(SRC_DIR)/%.o: $(SRC_DIR)/%.c $(SRC_DIR)/hrecord.h $(PURE_HDRS)
 	@echo "  CC    $<"
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-$(RES_OBJ): $(SRC_DIR)/mrecord.rc $(SRC_DIR)/mrecord.exe.manifest
+$(RES_OBJ): $(SRC_DIR)/hrecord.rc $(SRC_DIR)/hrecord.exe.manifest
 	@echo "  RC    $<"
 	$(WINDRES) $(RCFLAGS) -I$(SRC_DIR) -O coff -i $< -o $@
 
@@ -118,5 +118,5 @@ test: $(TEST_BINS)
 	 echo "  all tests passed"
 
 clean:
-	rm -f $(TARGET) $(MRECORD_OBJS) $(RES_OBJ) $(TEST_BINS)
+	rm -f $(TARGET) $(HRECORD_OBJS) $(RES_OBJ) $(TEST_BINS)
 	rm -f .version-*
