@@ -26,7 +26,7 @@ L"  -D, --duration SECS   stop by itself\n"
 L"Options:\n"
 L"  -o, --output PATH     .mp4; default %USERPROFILE%\\Videos\\Screen Recordings\\mrecord-YYYYMMDD-HHMMSS.mp4\n"
 L"      --fps N           default 30 (constant frame rate; repeat the last frame when nothing changed)\n"
-L"      --bitrate KBPS    default derived from region size and fps\n"
+L"      --bitrate KBPS    target average bitrate; default: size follows what changes on screen\n"
 L"  -a, --audio           also record system sound (WASAPI loopback, AAC)\n"
 L"  -c, --cursor          draw the mouse pointer\n"
 L"  -d, --delay SECONDS   wait before starting\n"
@@ -234,6 +234,7 @@ static int run_session(const Options *o, const Target *t, const wchar_t *path, C
     int height = grect_height(t->region);
     int kbps   = o->bitrate_kbps ? o->bitrate_kbps
                                  : pacing_default_bitrate_kbps(width, height, o->fps);
+    int quality = o->bitrate_kbps ? 0 : ENCODER_QUALITY;
 
     if (!capture_open(&s.capture, t->monitor.device, t->region)) {
         con_err(L"mrecord: cannot capture %ls (see %%LOCALAPPDATA%%\\mrecord\\mrecord.log)\n",
@@ -247,13 +248,13 @@ static int run_session(const Options *o, const Target *t, const wchar_t *path, C
             con_err(L"mrecord: system sound is unavailable, recording video only\n");
     }
 
-    bool encoder_ok = encoder_open(&s.encoder, path, width, height, o->fps, kbps,
+    bool encoder_ok = encoder_open(&s.encoder, path, width, height, o->fps, kbps, quality,
                                    s.audio_open ? s.audio.rate_out : 0);
     if (!encoder_ok && s.audio_open) {
         con_err(L"mrecord: the AAC encoder refused system sound, recording video only\n");
         audio_close(&s.audio);
         s.audio_open = false;
-        encoder_ok = encoder_open(&s.encoder, path, width, height, o->fps, kbps, 0);
+        encoder_ok = encoder_open(&s.encoder, path, width, height, o->fps, kbps, quality, 0);
     }
     if (!encoder_ok) {
         con_err(L"mrecord: cannot create %ls\n", path);
@@ -263,9 +264,12 @@ static int run_session(const Options *o, const Target *t, const wchar_t *path, C
 
     if (o->cursor) s.canvas_open = cursor_canvas_open(&s.canvas, width, height);
 
-    log_msg(LOG_INFO, L"recording %ls: %d,%d %dx%d on %ls, %d fps, %d kbps%ls%ls",
+    wchar_t rate[32];
+    if (quality) swprintf(rate, 32, L"quality %d", quality);
+    else         swprintf(rate, 32, L"%d kbps", kbps);
+    log_msg(LOG_INFO, L"recording %ls: %d,%d %dx%d on %ls, %d fps, %ls%ls%ls",
             path, t->region.left, t->region.top, width, height, t->monitor.device,
-            o->fps, kbps, s.audio_open ? L", audio" : L"", s.canvas_open ? L", cursor" : L"");
+            o->fps, rate, s.audio_open ? L", audio" : L"", s.canvas_open ? L", cursor" : L"");
 
     int  exit_code = MR_EXIT_OK;
     bool have = first_frame(&s);

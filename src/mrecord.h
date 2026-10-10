@@ -23,6 +23,9 @@
 
 #define MONITORS_MAX 32
 
+/* Quality-based VBR level (1-100) used unless --bitrate is given. */
+#define ENCODER_QUALITY 70
+
 #define MRECORD_VERSION_W L"" MRECORD_VERSION
 
 void con_out(const wchar_t *fmt, ...);
@@ -127,7 +130,7 @@ typedef struct {
 } Encoder;
 
 bool encoder_open(Encoder *e, const wchar_t *path, int width, int height,
-                  int fps, int kbps, int audio_rate);
+                  int fps, int kbps, int quality, int audio_rate);
 bool encoder_write_video(Encoder *e, const BYTE *bgra, int64_t time_hns,
                          int64_t duration_hns);
 bool encoder_write_audio(Encoder *e, const int16_t *pcm, uint32_t frames,

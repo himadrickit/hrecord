@@ -4,8 +4,24 @@
 #include <mfidl.h>
 #include <mferror.h>
 #include <mfreadwrite.h>
+#include <codecapi.h>
 
 #define AAC_BYTES_PER_SECOND 24000
+
+/* A keyframe every this many seconds. Desktop video is mostly static, so long
+ * GOPs are where most of the saving is; 5 s still seeks well enough. */
+#define GOP_SECONDS 5
+
+/* The C headers only provide STATIC_CODECAPI_* initialiser lists, not GUID
+ * objects, so build the five properties we set from those. */
+#define CAPI_GUID_(a, b, c, d, e, f, g, h, i, j, k) { a, b, c, { d, e, f, g, h, i, j, k } }
+#define CAPI_GUID(...) CAPI_GUID_(__VA_ARGS__)
+
+static const GUID K_RATE_MODE = CAPI_GUID(STATIC_CODECAPI_AVEncCommonRateControlMode);
+static const GUID K_QUALITY   = CAPI_GUID(STATIC_CODECAPI_AVEncCommonQuality);
+static const GUID K_MEAN_RATE = CAPI_GUID(STATIC_CODECAPI_AVEncCommonMeanBitRate);
+static const GUID K_MAX_RATE  = CAPI_GUID(STATIC_CODECAPI_AVEncCommonMaxBitRate);
+static const GUID K_GOP_SIZE  = CAPI_GUID(STATIC_CODECAPI_AVEncMPVGOPSize);
 
 static HRESULT set_pair(IMFMediaType *t, REFGUID key, UINT32 hi, UINT32 lo) {
     return IMFMediaType_SetUINT64(t, key, ((UINT64)hi << 32) | lo);
@@ -28,8 +44,40 @@ static HRESULT video_type(IMFMediaType **out, const GUID *subtype, int w, int h,
     return S_OK;
 }
 
-static HRESULT add_video(Encoder *e, int fps, int kbps) {
+/* Encoder settings handed to SetInputMediaType. quality > 0 asks for
+ * quality-based VBR (bits follow the content, so a still screen costs almost
+ * nothing); quality == 0 asks for a bitrate target that may peak at twice the
+ * mean. Without any of this the Microsoft encoder behaves like CBR and spends
+ * the whole bitrate budget on frames that did not change. */
+static HRESULT encoding_params(IMFAttributes **out, int fps, int kbps, int quality) {
+    IMFAttributes *p = NULL;
+    HRESULT hr = MFCreateAttributes(&p, 5);
+    if (quality > 0) {
+        if (SUCCEEDED(hr)) hr = IMFAttributes_SetUINT32(p, &K_RATE_MODE,
+                                                        eAVEncCommonRateControlMode_Quality);
+        if (SUCCEEDED(hr)) hr = IMFAttributes_SetUINT32(p, &K_QUALITY,
+                                                        (UINT32)quality);
+    } else {
+        if (SUCCEEDED(hr)) hr = IMFAttributes_SetUINT32(p, &K_RATE_MODE,
+                                                        eAVEncCommonRateControlMode_PeakConstrainedVBR);
+        if (SUCCEEDED(hr)) hr = IMFAttributes_SetUINT32(p, &K_MEAN_RATE,
+                                                        (UINT32)kbps * 1000);
+        if (SUCCEEDED(hr)) hr = IMFAttributes_SetUINT32(p, &K_MAX_RATE,
+                                                        (UINT32)kbps * 2000);
+    }
+    if (SUCCEEDED(hr)) hr = IMFAttributes_SetUINT32(p, &K_GOP_SIZE,
+                                                    (UINT32)(fps * GOP_SECONDS));
+    if (FAILED(hr)) {
+        if (p) IMFAttributes_Release(p);
+        return hr;
+    }
+    *out = p;
+    return S_OK;
+}
+
+static HRESULT add_video(Encoder *e, int fps, int kbps, int quality, bool tuned) {
     IMFMediaType *out = NULL, *in = NULL;
+    IMFAttributes *params = NULL;
 
     HRESULT hr = video_type(&out, &MFVideoFormat_H264, e->width, e->height, fps);
     if (SUCCEEDED(hr)) hr = IMFMediaType_SetUINT32(out, &MF_MT_AVG_BITRATE, (UINT32)kbps * 1000);
@@ -41,19 +89,31 @@ static HRESULT add_video(Encoder *e, int fps, int kbps) {
         return hr;
     }
 
+    if (tuned) {
+        hr = encoding_params(&params, fps, kbps, quality);
+        if (FAILED(hr)) {
+            log_msg(LOG_WARN, L"encoder: cannot build encoder settings (0x%08lX)", (unsigned long)hr);
+            return hr;
+        }
+    }
+
     hr = video_type(&in, &MFVideoFormat_RGB32, e->width, e->height, fps);
     if (SUCCEEDED(hr)) hr = IMFMediaType_SetUINT32(in, &MF_MT_DEFAULT_STRIDE, (UINT32)(e->width * 4));
-    if (SUCCEEDED(hr)) hr = IMFSinkWriter_SetInputMediaType(e->writer, e->video_stream, in, NULL);
+    if (SUCCEEDED(hr)) hr = IMFSinkWriter_SetInputMediaType(e->writer, e->video_stream, in, params);
     if (in) IMFMediaType_Release(in);
-    if (SUCCEEDED(hr)) return hr;
+    if (SUCCEEDED(hr)) {
+        if (params) IMFAttributes_Release(params);
+        return hr;
+    }
 
     log_msg(LOG_WARN, L"encoder: RGB32 input refused (0x%08lX), converting to NV12 instead",
             (unsigned long)hr);
 
     in = NULL;
     hr = video_type(&in, &MFVideoFormat_NV12, e->width, e->height, fps);
-    if (SUCCEEDED(hr)) hr = IMFSinkWriter_SetInputMediaType(e->writer, e->video_stream, in, NULL);
+    if (SUCCEEDED(hr)) hr = IMFSinkWriter_SetInputMediaType(e->writer, e->video_stream, in, params);
     if (in) IMFMediaType_Release(in);
+    if (params) IMFAttributes_Release(params);
     if (FAILED(hr)) {
         log_msg(LOG_ERROR, L"encoder: NV12 input refused too (0x%08lX)", (unsigned long)hr);
         return hr;
@@ -101,14 +161,17 @@ static HRESULT add_audio(Encoder *e) {
     return hr;
 }
 
-bool encoder_open(Encoder *e, const wchar_t *path, int width, int height,
-                  int fps, int kbps, int audio_rate) {
-    ZeroMemory(e, sizeof *e);
-    InitializeCriticalSection(&e->lock);
-    e->width      = width;
-    e->height     = height;
-    e->audio_rate = audio_rate;
-    e->has_audio  = audio_rate > 0;
+typedef enum {
+    OPEN_OK,
+    OPEN_VIDEO_FAILED,
+    OPEN_AUDIO_FAILED,
+} OpenResult;
+
+/* One attempt at building the writer. On failure nothing is left behind: the
+ * writer is released and the half-made file deleted. */
+static OpenResult open_once(Encoder *e, const wchar_t *path, int fps, int kbps,
+                            int quality, bool tuned) {
+    e->nv12 = false;
 
     IMFAttributes *attr = NULL;
     HRESULT hr = MFCreateAttributes(&attr, 2);
@@ -118,22 +181,57 @@ bool encoder_open(Encoder *e, const wchar_t *path, int width, int height,
     if (attr) IMFAttributes_Release(attr);
     if (FAILED(hr)) {
         log_msg(LOG_ERROR, L"encoder: cannot write %ls (0x%08lX)", path, (unsigned long)hr);
-        DeleteCriticalSection(&e->lock);
-        return false;
+        return OPEN_AUDIO_FAILED;
     }
 
-    hr = add_video(e, fps, kbps);
-    if (SUCCEEDED(hr) && e->has_audio) hr = add_audio(e);
-    if (SUCCEEDED(hr)) hr = IMFSinkWriter_BeginWriting(e->writer);
+    OpenResult why = OPEN_VIDEO_FAILED;
+    hr = add_video(e, fps, kbps, quality, tuned);
+    if (SUCCEEDED(hr) && e->has_audio) {
+        hr = add_audio(e);
+        if (FAILED(hr)) why = OPEN_AUDIO_FAILED;
+    }
+    if (SUCCEEDED(hr)) {
+        hr = IMFSinkWriter_BeginWriting(e->writer);
+        if (FAILED(hr)) {
+            log_msg(LOG_ERROR, L"encoder: BeginWriting failed (0x%08lX)", (unsigned long)hr);
+            why = OPEN_VIDEO_FAILED;
+        }
+    }
     if (FAILED(hr)) {
-        log_msg(LOG_ERROR, L"encoder: BeginWriting failed (0x%08lX)", (unsigned long)hr);
         IMFSinkWriter_Release(e->writer);
         e->writer = NULL;
-        DeleteCriticalSection(&e->lock);
         DeleteFileW(path);
-        return false;
+        return why;
     }
-    return true;
+    return OPEN_OK;
+}
+
+bool encoder_open(Encoder *e, const wchar_t *path, int width, int height,
+                  int fps, int kbps, int quality, int audio_rate) {
+    ZeroMemory(e, sizeof *e);
+    InitializeCriticalSection(&e->lock);
+    e->width      = width;
+    e->height     = height;
+    e->audio_rate = audio_rate;
+    e->has_audio  = audio_rate > 0;
+
+    OpenResult r = open_once(e, path, fps, kbps, quality, true);
+    if (r == OPEN_OK) {
+        if (quality > 0)
+            log_msg(LOG_INFO, L"encoder: quality VBR %d, keyframe every %d s", quality, GOP_SECONDS);
+        else
+            log_msg(LOG_INFO, L"encoder: peak-constrained VBR, mean %d kbps, keyframe every %d s",
+                    kbps, GOP_SECONDS);
+        return true;
+    }
+    if (r == OPEN_VIDEO_FAILED) {
+        log_msg(LOG_WARN, L"encoder: rate-control settings refused, using the encoder defaults at %d kbps",
+                kbps);
+        if (open_once(e, path, fps, kbps, 0, false) == OPEN_OK) return true;
+    }
+
+    DeleteCriticalSection(&e->lock);
+    return false;
 }
 
 static bool write_sample(Encoder *e, DWORD stream, const BYTE *data, DWORD size,
